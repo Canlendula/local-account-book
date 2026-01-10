@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "temp_app",
+    "name": "记账助手",
     "slug": "temp_app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,7 +22,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.infinty081.temp_app"
     },
     "web": {
       "bundler": "metro",
@@ -34,6 +35,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "94e012ef-82a3-4acd-842b-8a705bbbcd77"
+      }
     }
   }
 }
