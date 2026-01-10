@@ -1,4 +1,5 @@
 import DateRangePicker from '@/components/DateRangePicker';
+import TagFilterDropdown from '@/components/TagFilterDropdown';
 import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -19,6 +20,14 @@ type Transaction = {
   tagColor?: string;
 };
 
+type Tag = {
+  id: number;
+  name: string;
+  type: string;
+  icon: string;
+  color: string;
+};
+
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const theme = useTheme();
@@ -29,17 +38,40 @@ export default function HomeScreen() {
   const [startDate, setStartDate] = useState(dayjs().subtract(1, 'month').format('YYYY-MM-DD'));
   const [endDate, setEndDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // 标签筛选
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+
+  const fetchTags = async () => {
+    try {
+      const result = await db.getAllAsync<Tag>('SELECT * FROM tags ORDER BY type, id');
+      setTags(result);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const result = await db.getAllAsync<Transaction>(`
+      let sql = `
         SELECT t.*, tg.name as tagName, tg.icon as tagIcon, tg.color as tagColor 
         FROM transactions t
         LEFT JOIN tags tg ON t.tag_id = tg.id
         WHERE date(t.date) >= date(?) AND date(t.date) <= date(?)
-        ORDER BY t.date DESC
-      `, [startDate, endDate]);
+      `;
+      const params: (string | number)[] = [startDate, endDate];
+      
+      if (selectedTagIds.length > 0) {
+        const placeholders = selectedTagIds.map(() => '?').join(',');
+        sql += ` AND t.tag_id IN (${placeholders})`;
+        params.push(...selectedTagIds);
+      }
+      
+      sql += ` ORDER BY t.date DESC`;
+      
+      const result = await db.getAllAsync<Transaction>(sql, params);
       setTransactions(result);
     } catch (e) {
       console.error(e);
@@ -50,8 +82,9 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      fetchTags();
       fetchTransactions();
-    }, [startDate, endDate])
+    }, [startDate, endDate, selectedTagIds])
   );
 
   const handleDelete = (id: number) => {
@@ -111,6 +144,15 @@ export default function HomeScreen() {
         }} />
       </View>
 
+      {/* 标签筛选 */}
+      <View style={styles.filterRow}>
+        <TagFilterDropdown
+          tags={tags}
+          selectedTagIds={selectedTagIds}
+          onSelectionChange={setSelectedTagIds}
+        />
+      </View>
+
       {loading ? (
         <ActivityIndicator animating={true} style={{ marginTop: 20 }} />
       ) : (
@@ -160,6 +202,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
     elevation: 2,
+  },
+  filterRow: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   card: {
     marginBottom: 8,

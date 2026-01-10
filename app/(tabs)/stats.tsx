@@ -1,4 +1,5 @@
 import DateRangePicker from '@/components/DateRangePicker';
+import TagFilterDropdown from '@/components/TagFilterDropdown';
 import dayjs from 'dayjs';
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -12,6 +13,15 @@ type ChartData = {
   color: string;
   text?: string;
   tagName: string;
+  tagId: number;
+};
+
+type Tag = {
+  id: number;
+  name: string;
+  type: string;
+  icon: string;
+  color: string;
 };
 
 export default function StatsScreen() {
@@ -32,6 +42,19 @@ export default function StatsScreen() {
   const [currency, setCurrency] = useState('CNY');
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['CNY']);
   const [txType, setTxType] = useState('expense'); // 'expense' or 'income'
+  
+  // 标签筛选
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+
+  const fetchTags = async () => {
+    try {
+      const result = await db.getAllAsync<Tag>('SELECT * FROM tags ORDER BY type, id');
+      setTags(result);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -48,16 +71,26 @@ export default function StatsScreen() {
       if (currentCurrency !== currency) setCurrency(currentCurrency);
 
       // Aggregate transactions by tag based on type
-      const result = await db.getAllAsync<{total: number, tagName: string, color: string}>(`
-        SELECT sum(t.amount) as total, tg.name as tagName, tg.color 
+      let sql = `
+        SELECT sum(t.amount) as total, tg.name as tagName, tg.color, tg.id as tagId
         FROM transactions t
         JOIN tags tg ON t.tag_id = tg.id
         WHERE t.type = ? 
           AND t.currency = ?
           AND date(t.date) BETWEEN date(?) AND date(?)
-        GROUP BY t.tag_id
-        ORDER BY total DESC
-      `, [txType, currentCurrency, startDate, endDate]);
+      `;
+      const params: (string | number)[] = [txType, currentCurrency, startDate, endDate];
+      
+      // 添加标签筛选条件
+      if (selectedTagIds.length > 0) {
+        const placeholders = selectedTagIds.map(() => '?').join(',');
+        sql += ` AND t.tag_id IN (${placeholders})`;
+        params.push(...selectedTagIds);
+      }
+      
+      sql += ` GROUP BY t.tag_id ORDER BY total DESC`;
+      
+      const result = await db.getAllAsync<{total: number, tagName: string, color: string, tagId: number}>(sql, params);
 
       const total = result.reduce((sum, item) => sum + item.total, 0);
       setTotalAmount(total);
@@ -66,7 +99,8 @@ export default function StatsScreen() {
         value: item.total,
         color: item.color || theme.colors.primary,
         text: total > 0 ? `${((item.total / total) * 100).toFixed(0)}%` : '0%',
-        tagName: item.tagName
+        tagName: item.tagName,
+        tagId: item.tagId
       }));
       setPieData(chartData);
 
@@ -79,8 +113,9 @@ export default function StatsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      fetchTags();
       fetchData();
-    }, [startDate, endDate, currency, txType])
+    }, [startDate, endDate, currency, txType, selectedTagIds])
   );
 
   return (
@@ -126,6 +161,16 @@ export default function StatsScreen() {
           style={styles.currencySelector}
         />
       )}
+
+      {/* 标签筛选 */}
+      <View style={styles.filterRow}>
+        <TagFilterDropdown
+          tags={tags}
+          selectedTagIds={selectedTagIds}
+          onSelectionChange={setSelectedTagIds}
+          filterByType={txType}
+        />
+      </View>
 
       {loading ? (
         <ActivityIndicator animating={true} style={{marginTop: 50}} />
@@ -194,6 +239,9 @@ const styles = StyleSheet.create({
   },
   currencySelector: {
     marginBottom: 20,
+  },
+  filterRow: {
+    marginBottom: 16,
   },
   chartContainer: {
     alignItems: 'center',
