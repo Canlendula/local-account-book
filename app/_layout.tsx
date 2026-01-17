@@ -105,7 +105,7 @@ function CustomSplashScreen({ onFinish }: { onFinish: () => void }) {
 
   return (
     <View style={[styles.splashContainer, { backgroundColor: theme.colors.background }]}>
-      <Text variant="displayMedium" style={[styles.splashText, { color: theme.colors.primary }]}>Accounting App</Text>
+      <Text variant="displayMedium" style={[styles.splashText, { color: theme.colors.primary }]}>又来记账了哥</Text>
       <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant }}>{greeting}</Text>
     </View>
   );
