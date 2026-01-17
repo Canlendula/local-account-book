@@ -70,11 +70,15 @@ export default function StatsScreen() {
       const currentCurrency = currencies.includes(currency) ? currency : (currencies[0] || 'CNY');
       if (currentCurrency !== currency) setCurrency(currentCurrency);
 
-      // Aggregate transactions by tag based on type
+      // 标签类型聚合统计
+      // 被删除的tag的记录仍然需要被统计（归类到"其他"）
       let sql = `
-        SELECT sum(t.amount) as total, tg.name as tagName, tg.color, tg.id as tagId
+        SELECT sum(t.amount) as total, 
+               COALESCE(tg.name, '其他') as tagName, 
+               COALESCE(tg.color, '#607D8B') as color, 
+               COALESCE(tg.id, -1) as tagId
         FROM transactions t
-        JOIN tags tg ON t.tag_id = tg.id
+        LEFT JOIN tags tg ON t.tag_id = tg.id
         WHERE t.type = ? 
           AND t.currency = ?
           AND date(t.date) BETWEEN date(?) AND date(?)
@@ -88,7 +92,7 @@ export default function StatsScreen() {
         params.push(...selectedTagIds);
       }
       
-      sql += ` GROUP BY t.tag_id ORDER BY total DESC`;
+      sql += ` GROUP BY COALESCE(tg.id, -1) ORDER BY total DESC`;
       
       const result = await db.getAllAsync<{total: number, tagName: string, color: string, tagId: number}>(sql, params);
 
