@@ -192,7 +192,7 @@ export default function StatsScreen() {
                 return (
                     <View style={{justifyContent: 'center', alignItems: 'center'}}>
                         <Text variant="labelMedium">{txType === 'expense' ? '总支出' : '总收入'}</Text>
-                        <Text variant="titleMedium">{totalAmount.toFixed(2)}</Text>
+                        <Text variant="titleMedium">{totalAmount.toFixed(2)} {currency}</Text>
                     </View>
                 );
                 }}
@@ -204,7 +204,7 @@ export default function StatsScreen() {
                    <View key={index} style={styles.legendItem}>
                        <View style={[styles.legendColor, { backgroundColor: item.color }]} />
                        <Text style={{flex: 1}}>{item.tagName}</Text>
-                       <Text>{item.value.toFixed(2)}</Text>
+                       <Text>{item.value.toFixed(2)} {currency}</Text>
                    </View>
                ))}
            </View>
