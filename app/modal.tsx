@@ -1,9 +1,9 @@
-import { View, StyleSheet, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
-import { Text, TextInput, Button, SegmentedButtons, useTheme, TouchableRipple, Icon } from 'react-native-paper';
-import { useRouter } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
-import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
+import { Stack, useRouter } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useEffect, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Dialog, Icon, Portal, RadioButton, SegmentedButtons, Text, TextInput, TouchableRipple, useTheme } from 'react-native-paper';
 
 type Tag = {
   id: number;
@@ -12,6 +12,8 @@ type Tag = {
   color: string;
   type: string;
 };
+
+const CURRENCY_OPTIONS = ['CNY', 'USD'];
 
 export default function ModalScreen() {
   const router = useRouter();
@@ -24,7 +26,19 @@ export default function ModalScreen() {
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-  const [currency, setCurrency] = useState('CNY'); 
+  const [currency, setCurrency] = useState('CNY');
+  const [showCurrencyDialog, setShowCurrencyDialog] = useState(false);
+
+  // 从settings读取默认币种
+  useEffect(() => {
+    const loadDefaultCurrency = async () => {
+      const res = await db.getFirstAsync<{value: string}>('SELECT value FROM settings WHERE key = ?', 'defaultCurrency');
+      if (res && res.value) {
+        setCurrency(res.value);
+      }
+    };
+    loadDefaultCurrency();
+  }, []);
 
   useEffect(() => {
     // Load Tags based on type
@@ -62,6 +76,7 @@ export default function ModalScreen() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{flex: 1}}>
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <Stack.Screen options={{ title: '记一笔' }} />
       
       <ScrollView contentContainerStyle={styles.content}>
         
@@ -82,9 +97,21 @@ export default function ModalScreen() {
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="numeric"
-                left={<TextInput.Affix text={currency} />}
                 style={styles.input}
                 autoFocus
+                left={
+                    <TextInput.Icon 
+                        icon={() => (
+                            <Pressable 
+                                onPress={() => setShowCurrencyDialog(true)}
+                                style={styles.currencyPressable}
+                            >
+                                <Text variant="labelLarge" style={{color: theme.colors.primary}}>{currency}</Text>
+                                <Icon source="menu-down" size={12} color={theme.colors.primary} />
+                            </Pressable>
+                        )}
+                    />
+                }
             />
         </View>
 
@@ -129,6 +156,19 @@ export default function ModalScreen() {
         </Button>
 
       </ScrollView>
+
+      <Portal>
+        <Dialog visible={showCurrencyDialog} onDismiss={() => setShowCurrencyDialog(false)}>
+          <Dialog.Title>选择币种</Dialog.Title>
+          <Dialog.Content>
+            <RadioButton.Group onValueChange={v => { setCurrency(v); setShowCurrencyDialog(false); }} value={currency}>
+              {CURRENCY_OPTIONS.map(c => (
+                <RadioButton.Item key={c} label={c} value={c} />
+              ))}
+            </RadioButton.Group>
+          </Dialog.Content>
+        </Dialog>
+      </Portal>
     </View>
     </KeyboardAvoidingView>
   );
@@ -147,6 +187,10 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 20,
+  },
+  currencyPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   input: {
     marginBottom: 10,
