@@ -5,7 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Card, Chip, FAB, Icon, IconButton, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Card, Chip, FAB, Icon, IconButton, SegmentedButtons, Text, useTheme } from 'react-native-paper';
 
 type Transaction = {
   id: number;
@@ -35,9 +35,25 @@ export default function HomeScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // 日期模式：滑动窗口 或 自然月
+  const [dateMode, setDateMode] = useState<'sliding' | 'monthly'>('sliding');
+  
+  // 滑动窗口模式使用的日期
   const [startDate, setStartDate] = useState(dayjs().subtract(1, 'month').format('YYYY-MM-DD'));
   const [endDate, setEndDate] = useState(dayjs().format('YYYY-MM-DD'));
+  
+  // 自然月模式使用的月份
+  const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
+  
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // 根据模式计算实际使用的日期范围
+  const effectiveStartDate = dateMode === 'monthly'
+    ? dayjs(selectedMonth).startOf('month').format('YYYY-MM-DD')
+    : startDate;
+  const effectiveEndDate = dateMode === 'monthly'
+    ? dayjs(selectedMonth).endOf('month').format('YYYY-MM-DD')
+    : endDate;
   
   // 标签筛选
   const [tags, setTags] = useState<Tag[]>([]);
@@ -61,7 +77,7 @@ export default function HomeScreen() {
         LEFT JOIN tags tg ON t.tag_id = tg.id
         WHERE date(t.date) >= date(?) AND date(t.date) <= date(?)
       `;
-      const params: (string | number)[] = [startDate, endDate];
+      const params: (string | number)[] = [effectiveStartDate, effectiveEndDate];
       
       if (selectedTagIds.length > 0) {
         const placeholders = selectedTagIds.map(() => '?').join(',');
@@ -84,8 +100,35 @@ export default function HomeScreen() {
     useCallback(() => {
       fetchTags();
       fetchTransactions();
-    }, [startDate, endDate, selectedTagIds])
+    }, [effectiveStartDate, effectiveEndDate, selectedTagIds])
   );
+
+  // 日期导航处理函数
+  const handlePrevious = () => {
+    if (dateMode === 'monthly') {
+      setSelectedMonth(dayjs(selectedMonth).subtract(1, 'month').format('YYYY-MM'));
+    } else {
+      setStartDate(dayjs(startDate).subtract(1, 'month').format('YYYY-MM-DD'));
+      setEndDate(dayjs(endDate).subtract(1, 'month').format('YYYY-MM-DD'));
+    }
+  };
+
+  const handleNext = () => {
+    if (dateMode === 'monthly') {
+      setSelectedMonth(dayjs(selectedMonth).add(1, 'month').format('YYYY-MM'));
+    } else {
+      setStartDate(dayjs(startDate).add(1, 'month').format('YYYY-MM-DD'));
+      setEndDate(dayjs(endDate).add(1, 'month').format('YYYY-MM-DD'));
+    }
+  };
+
+  // 获取日期显示文本
+  const getDateDisplayText = () => {
+    if (dateMode === 'monthly') {
+      return dayjs(selectedMonth).format('YYYY年M月');
+    }
+    return `${startDate} ~ ${endDate}`;
+  };
 
   const handleDelete = (id: number) => {
     Alert.alert(
@@ -128,20 +171,32 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-        <IconButton icon="chevron-left" onPress={() => {
-            setStartDate(dayjs(startDate).subtract(1, 'month').format('YYYY-MM-DD'));
-            setEndDate(dayjs(endDate).subtract(1, 'month').format('YYYY-MM-DD'));
-        }} />
-        <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-            <View style={{alignItems: 'center'}}>
-                <Text variant="labelMedium" style={{color: theme.colors.onSurfaceVariant}}>当前区间 (点击修改)</Text>
-                <Text variant="titleMedium">{startDate} ~ {endDate}</Text>
-            </View>
-        </TouchableOpacity>
-        <IconButton icon="chevron-right" onPress={() => {
-            setStartDate(dayjs(startDate).add(1, 'month').format('YYYY-MM-DD'));
-            setEndDate(dayjs(endDate).add(1, 'month').format('YYYY-MM-DD'));
-        }} />
+        {/* 日期模式切换 */}
+        <SegmentedButtons
+          value={dateMode}
+          onValueChange={(value) => setDateMode(value as 'sliding' | 'monthly')}
+          buttons={[
+            { value: 'sliding', label: '滑动窗口' },
+            { value: 'monthly', label: '自然月' },
+          ]}
+          style={styles.modeSelector}
+        />
+        
+        <View style={styles.dateNavRow}>
+          <IconButton icon="chevron-left" onPress={handlePrevious} />
+          <TouchableOpacity 
+            onPress={() => dateMode === 'sliding' && setShowDatePicker(true)}
+            disabled={dateMode === 'monthly'}
+          >
+              <View style={{alignItems: 'center'}}>
+                  <Text variant="labelMedium" style={{color: theme.colors.onSurfaceVariant}}>
+                    {dateMode === 'sliding' ? '当前区间 (点击修改)' : '当前月份'}
+                  </Text>
+                  <Text variant="titleMedium">{getDateDisplayText()}</Text>
+              </View>
+          </TouchableOpacity>
+          <IconButton icon="chevron-right" onPress={handleNext} />
+        </View>
       </View>
 
       {/* 标签筛选 */}
@@ -176,17 +231,19 @@ export default function HomeScreen() {
         onPress={() => router.push('/modal')}
       />
 
-      <DateRangePicker 
-        visible={showDatePicker}
-        onDismiss={() => setShowDatePicker(false)}
-        initialStartDate={startDate}
-        initialEndDate={endDate}
-        onConfirm={(start, end) => {
-            setStartDate(start);
-            setEndDate(end);
-            setShowDatePicker(false);
-        }}
-      />
+      {dateMode === 'sliding' && (
+        <DateRangePicker 
+          visible={showDatePicker}
+          onDismiss={() => setShowDatePicker(false)}
+          initialStartDate={startDate}
+          initialEndDate={endDate}
+          onConfirm={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+              setShowDatePicker(false);
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -197,11 +254,16 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
+    marginBottom: 8,
+    elevation: 2,
+  },
+  modeSelector: {
+    marginBottom: 12,
+  },
+  dateNavRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-    elevation: 2,
   },
   filterRow: {
     paddingHorizontal: 16,
