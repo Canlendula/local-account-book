@@ -5,7 +5,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Card, Chip, FAB, Icon, IconButton, SegmentedButtons, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Card, Chip, FAB, Icon, IconButton, Text, useTheme } from 'react-native-paper';
+import MiniToggle from '@/components/MiniToggle';
 
 type Transaction = {
   id: number;
@@ -171,31 +172,27 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-        {/* 日期模式切换 */}
-        <SegmentedButtons
-          value={dateMode}
-          onValueChange={(value) => setDateMode(value as 'sliding' | 'monthly')}
-          buttons={[
-            { value: 'sliding', label: '滑动窗口' },
-            { value: 'monthly', label: '自然月' },
-          ]}
-          style={styles.modeSelector}
-        />
-        
-        <View style={styles.dateNavRow}>
-          <IconButton icon="chevron-left" onPress={handlePrevious} />
-          <TouchableOpacity 
-            onPress={() => dateMode === 'sliding' && setShowDatePicker(true)}
-            disabled={dateMode === 'monthly'}
-          >
-              <View style={{alignItems: 'center'}}>
-                  <Text variant="labelMedium" style={{color: theme.colors.onSurfaceVariant}}>
-                    {dateMode === 'sliding' ? '当前区间 (点击修改)' : '当前月份'}
-                  </Text>
-                  <Text variant="titleMedium">{getDateDisplayText()}</Text>
-              </View>
-          </TouchableOpacity>
-          <IconButton icon="chevron-right" onPress={handleNext} />
+        <View style={styles.headerRow}>
+          {/* 日期模式切换 */}
+          <MiniToggle
+            value={dateMode}
+            onValueChange={(value) => setDateMode(value as 'sliding' | 'monthly')}
+            options={[
+              { value: 'sliding', label: '滑动' },
+              { value: 'monthly', label: '月份' },
+            ]}
+          />
+          
+          <View style={styles.dateNavRow}>
+            <IconButton icon="chevron-left" onPress={handlePrevious} size={20} style={styles.navButton} />
+            <TouchableOpacity 
+              onPress={() => dateMode === 'sliding' && setShowDatePicker(true)}
+              disabled={dateMode === 'monthly'}
+            >
+              <Text variant="bodyMedium">{getDateDisplayText()}</Text>
+            </TouchableOpacity>
+            <IconButton icon="chevron-right" onPress={handleNext} size={20} style={styles.navButton} />
+          </View>
         </View>
       </View>
 
@@ -253,17 +250,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     marginBottom: 8,
     elevation: 2,
   },
-  modeSelector: {
-    marginBottom: 12,
-  },
-  dateNavRow: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  dateNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 32,
+  },
+  navButton: {
+    margin: 0,
   },
   filterRow: {
     paddingHorizontal: 16,

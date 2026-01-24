@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Dialog, FAB, Icon, IconButton, List, Portal, SegmentedButtons, Text, TextInput, useTheme } from 'react-native-paper';
+import { Button, Dialog, FAB, Icon, IconButton, List, Portal, Text, TextInput, useTheme } from 'react-native-paper';
+import MiniToggle from '@/components/MiniToggle';
 
 type Tag = {
   id: number;
@@ -125,15 +126,16 @@ export default function TagsManagerScreen() {
           <Dialog.ScrollArea style={styles.dialogScrollArea}>
             <ScrollView>
               <View style={styles.dialogContent}>
-                <SegmentedButtons
+                <View style={styles.toggleRow}>
+                  <MiniToggle
                     value={newTagType}
                     onValueChange={setNewTagType}
-                    buttons={[
-                        { value: 'expense', label: '支出' },
-                        { value: 'income', label: '收入' },
+                    options={[
+                      { value: 'expense', label: '支出' },
+                      { value: 'income', label: '收入' },
                     ]}
-                    style={{marginBottom: 15}}
-                />
+                  />
+                </View>
                 <TextInput
                   label="分类名称"
                   value={newTagName}
@@ -218,6 +220,10 @@ const styles = StyleSheet.create({
   dialogContent: {
     paddingHorizontal: 24,
     paddingBottom: 16,
+  },
+  toggleRow: {
+    alignItems: 'center',
+    marginBottom: 15,
   },
   previewContainer: {
     flexDirection: 'row',
