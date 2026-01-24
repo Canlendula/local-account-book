@@ -6,7 +6,8 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { PieChart } from "react-native-gifted-charts";
-import { ActivityIndicator, IconButton, SegmentedButtons, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, IconButton, Text, useTheme } from 'react-native-paper';
+import MiniToggle from '@/components/MiniToggle';
 
 type ChartData = {
   value: number;
@@ -167,55 +168,50 @@ export default function StatsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
-        {/* 日期模式切换 */}
-        <SegmentedButtons
-          value={dateMode}
-          onValueChange={(value) => setDateMode(value as 'sliding' | 'monthly')}
-          buttons={[
-            { value: 'sliding', label: '滑动窗口' },
-            { value: 'monthly', label: '自然月' },
-          ]}
-          style={styles.modeSelector}
-        />
-        
-        <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
-            <IconButton icon="chevron-left" onPress={handlePrevious} />
-            <TouchableOpacity 
-              onPress={() => dateMode === 'sliding' && setShowDatePicker(true)}
-              disabled={dateMode === 'monthly'}
-            >
-                <View style={{alignItems: 'center'}}>
-                    <Text variant="bodyMedium" style={{color: theme.colors.onSurfaceVariant}}>
-                      {getDateDisplayText()}
-                    </Text>
-                    {dateMode === 'sliding' && (
-                      <Text variant="labelSmall" style={{color: theme.colors.primary}}>点击修改</Text>
-                    )}
-                </View>
-            </TouchableOpacity>
-            <IconButton icon="chevron-right" onPress={handleNext} />
-        </View>
+      {/* 日期导航区域 */}
+      <View style={styles.dateNav}>
+        <IconButton icon="chevron-left" onPress={handlePrevious} size={20} style={styles.navButton} />
+        <TouchableOpacity 
+          onPress={() => dateMode === 'sliding' && setShowDatePicker(true)}
+          disabled={dateMode === 'monthly'}
+        >
+          <Text variant="bodyMedium" style={{color: theme.colors.onSurfaceVariant}}>
+            {getDateDisplayText()}
+          </Text>
+        </TouchableOpacity>
+        <IconButton icon="chevron-right" onPress={handleNext} size={20} style={styles.navButton} />
       </View>
 
-      <SegmentedButtons
+      {/* 筛选区域：日期模式 + 支出/收入 + 币种 */}
+      <View style={styles.filtersRow}>
+        <MiniToggle
+          value={dateMode}
+          onValueChange={(value) => setDateMode(value as 'sliding' | 'monthly')}
+          options={[
+            { value: 'sliding', label: '滑动' },
+            { value: 'monthly', label: '月份' },
+          ]}
+        />
+
+        <MiniToggle
           value={txType}
           onValueChange={setTxType}
-          buttons={[
-            { value: 'expense', label: '支出统计' },
-            { value: 'income', label: '收入统计' },
+          options={[
+            { value: 'expense', label: '支出' },
+            { value: 'income', label: '收入' },
           ]}
-          style={styles.typeSelector}
-      />
-
-      {availableCurrencies.length > 1 && (
-        <SegmentedButtons
-          value={currency}
-          onValueChange={setCurrency}
-          buttons={availableCurrencies.map(c => ({ value: c, label: c }))}
-          style={styles.currencySelector}
+          style={{marginLeft: 10}}
         />
-      )}
+
+        {availableCurrencies.length > 1 && (
+          <MiniToggle
+            value={currency}
+            onValueChange={setCurrency}
+            options={availableCurrencies.map(c => ({ value: c, label: c }))}
+            style={{marginLeft: 10}}
+          />
+        )}
+      </View>
 
       {/* 标签筛选 */}
       <View style={styles.filterRow}>
@@ -288,17 +284,19 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  header: {
-    marginBottom: 10,
+  dateNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
-  modeSelector: {
-      marginBottom: 12,
+  navButton: {
+    margin: 0,
   },
-  typeSelector: {
-      marginBottom: 20
-  },
-  currencySelector: {
-    marginBottom: 20,
+  filtersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   filterRow: {
     marginBottom: 16,

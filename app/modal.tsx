@@ -3,7 +3,8 @@ import { Stack, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Dialog, Icon, Portal, RadioButton, SegmentedButtons, Text, TextInput, TouchableRipple, useTheme } from 'react-native-paper';
+import { Button, Dialog, Icon, Portal, RadioButton, Text, TextInput, TouchableRipple, useTheme } from 'react-native-paper';
+import MiniToggle from '@/components/MiniToggle';
 
 type Tag = {
   id: number;
@@ -80,15 +81,16 @@ export default function ModalScreen() {
       
       <ScrollView contentContainerStyle={styles.content}>
         
-        <SegmentedButtons
+        <View style={styles.toggleRow}>
+          <MiniToggle
             value={type}
             onValueChange={setType}
-            buttons={[
-            { value: 'expense', label: '支出' },
-            { value: 'income', label: '收入' },
+            options={[
+              { value: 'expense', label: '支出' },
+              { value: 'income', label: '收入' },
             ]}
-            style={styles.segmentedButton}
-        />
+          />
+        </View>
 
         <View style={styles.inputContainer}>
             <TextInput
@@ -182,7 +184,8 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 50,
   },
-  segmentedButton: {
+  toggleRow: {
+    alignItems: 'center',
     marginBottom: 20,
   },
   inputContainer: {
