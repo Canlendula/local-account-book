@@ -1,10 +1,11 @@
+import MiniToggle from '@/components/MiniToggle';
 import dayjs from 'dayjs';
 import { Stack, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Dialog, Icon, Portal, RadioButton, Text, TextInput, TouchableRipple, useTheme } from 'react-native-paper';
-import MiniToggle from '@/components/MiniToggle';
+import { DatePickerModal } from 'react-native-paper-dates';
 
 type Tag = {
   id: number;
@@ -29,6 +30,7 @@ export default function ModalScreen() {
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD HH:mm:ss'));
   const [currency, setCurrency] = useState('CNY');
   const [showCurrencyDialog, setShowCurrencyDialog] = useState(false);
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
 
   // 从settings读取默认币种
   useEffect(() => {
@@ -146,9 +148,17 @@ export default function ModalScreen() {
             style={styles.input}
         />
         
-        <View style={styles.dateContainer}>
-             <Text variant="bodyMedium" style={{color: theme.colors.onSurfaceVariant}}>日期: {dayjs(date).format('YYYY-MM-DD HH:mm')}</Text>
-        </View>
+          <TouchableRipple
+            onPress={() => setShowDatePickerModal(true)}
+            style={styles.dateContainer}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                日期: {dayjs(date).format('YYYY-MM-DD')}
+              </Text>
+              <Icon source="calendar-edit" size={20} color={theme.colors.primary} />
+            </View>
+          </TouchableRipple>
 
         <Button mode="contained" onPress={handleSave} style={styles.button}>
             保存
@@ -171,6 +181,19 @@ export default function ModalScreen() {
           </Dialog.Content>
         </Dialog>
       </Portal>
+        <DatePickerModal
+          locale="zh"
+          mode="single"
+          visible={showDatePickerModal}
+          onDismiss={() => setShowDatePickerModal(false)}
+          date={dayjs(date).toDate()}
+          onConfirm={({ date: selectedDate }) => {
+            if (selectedDate) {
+              setDate(dayjs(selectedDate).format('YYYY-MM-DD') + ' ' + dayjs(date).format('HH:mm:ss'));
+            }
+            setShowDatePickerModal(false);
+          }}
+        />
     </View>
     </KeyboardAvoidingView>
   );
