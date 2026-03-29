@@ -1,12 +1,13 @@
 import DateRangePicker from '@/components/DateRangePicker';
+import MiniToggle from '@/components/MiniToggle';
 import TagFilterDropdown from '@/components/TagFilterDropdown';
 import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Card, Chip, FAB, Icon, IconButton, Text, useTheme } from 'react-native-paper';
-import MiniToggle from '@/components/MiniToggle';
+import { ActivityIndicator, Button, Card, Chip, Dialog, FAB, Icon, IconButton, Portal, Text, useTheme } from 'react-native-paper';
+import { DatePickerModal } from 'react-native-paper-dates';
 
 type Transaction = {
   id: number;
@@ -59,6 +60,11 @@ export default function HomeScreen() {
   // 标签筛选
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+
+  // 操作对话框（长按记录后显示）
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  const [actionTransaction, setActionTransaction] = useState<Transaction | null>(null);
+  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
 
   const fetchTags = async () => {
     try {
@@ -153,8 +159,23 @@ export default function HomeScreen() {
     );
   };
 
+  const handleUpdateDate = async (newDate: Date) => {
+    if (!actionTransaction) return;
+    try {
+      const timeStr = dayjs(actionTransaction.date).format('HH:mm:ss');
+      const dateStr = `${dayjs(newDate).format('YYYY-MM-DD')} ${timeStr}`;
+      await db.runAsync('UPDATE transactions SET date = ? WHERE id = ?', dateStr, actionTransaction.id);
+      fetchTransactions();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const renderItem = ({ item }: { item: Transaction }) => (
-    <Card style={styles.card} onLongPress={() => handleDelete(item.id)}>
+    <Card style={styles.card} onLongPress={() => {
+      setActionTransaction(item);
+      setShowActionDialog(true);
+    }}>
       <Card.Title
         title={`${item.type === 'expense' ? '-' : '+'}${item.amount.toFixed(2)} ${item.currency}`}
         subtitle={`${dayjs(item.date).format('YYYY-MM-DD HH:mm')} ${item.note ? '· ' + item.note : ''}`}
@@ -238,6 +259,49 @@ export default function HomeScreen() {
               setStartDate(start);
               setEndDate(end);
               setShowDatePicker(false);
+          }}
+        />
+      )}
+
+      {/* 操作对话框：修改日期 / 删除 */}
+      <Portal>
+        <Dialog visible={showActionDialog} onDismiss={() => setShowActionDialog(false)}>
+          <Dialog.Title>操作</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              {actionTransaction
+                ? `${actionTransaction.type === 'expense' ? '-' : '+'}${actionTransaction.amount.toFixed(2)} ${actionTransaction.currency}  「${dayjs(actionTransaction.date).format('YYYY-MM-DD')}」`
+                : ''}
+              {actionTransaction?.note ? `\n${actionTransaction.note}` : ''}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowActionDialog(false)}>取消</Button>
+            <Button onPress={() => {
+              setShowActionDialog(false);
+              setShowEditDatePicker(true);
+            }}>修改日期</Button>
+            <Button
+              textColor={theme.colors.error}
+              onPress={() => {
+                setShowActionDialog(false);
+                if (actionTransaction) handleDelete(actionTransaction.id);
+              }}
+            >删除</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {actionTransaction && (
+        <DatePickerModal
+          locale="zh"
+          mode="single"
+          visible={showEditDatePicker}
+          onDismiss={() => setShowEditDatePicker(false)}
+          date={dayjs(actionTransaction.date).toDate()}
+          onConfirm={({ date }) => {
+            if (date) handleUpdateDate(date);
+            setShowEditDatePicker(false);
           }}
         />
       )}
