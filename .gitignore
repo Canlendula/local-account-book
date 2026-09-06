@@ -43,3 +43,6 @@ yarn-error.*
 
 # local markdown files
 explain.md
+
+# Local agent skills
+/.agents/skills/
